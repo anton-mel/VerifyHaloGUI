@@ -181,27 +181,31 @@ bool AsicSender::setThresholds(double lowThreshold, double highThreshold) {
         return false;
     }
     
-    std::cout << "Setting FPGA thresholds - Low: " << lowThreshold << ", High: " << highThreshold << std::endl;
+    std::cout << "Setting FPGA thresholds - NEO: " << lowThreshold << ", Seizure: " << highThreshold << std::endl;
     
-    // Convert thresholds to 16-bit values (0-65535 range)
-    uint16_t lowThresh = static_cast<uint16_t>(lowThreshold * 65535);
-    uint16_t highThresh = static_cast<uint16_t>(highThreshold * 65535);
+    // Convert thresholds to appropriate bit widths
+    uint16_t neoThresh = static_cast<uint16_t>(lowThreshold * 65535);      // 16-bit NEO threshold
+    uint8_t seizureThresh = static_cast<uint8_t>(highThreshold * 32);      // 8-bit seizure threshold (channels)
     
-    // Set low threshold via WireIn
-    // Address 0x04-0x05: Low threshold (16-bit)
-    device_->SetWireInValue(0x04, lowThresh, 0xFFFF);
+    // Configure FPGA according to corrected implementation:
+    // ep00wire[0] = pipeline enable
+    // ep00wire[15:8] = seizure threshold (channels)
+    // ep01wire[31:0] = input timestamp (set by sendWaveformData)
+    // ep02wire[15:0] = NEO threshold
+    // ep02wire[23:16] = amplitude threshold (reserved)
+    // ep02wire[31:24] = frequency threshold (reserved)
+    
+    // Set ep00wire: pipeline enable + seizure threshold
+    uint32_t ep00wire = 0x0001 | (seizureThresh << 8);  // Enable + seizure threshold
+    device_->SetWireInValue(0x00, ep00wire, 0xFFFFFFFF);
     device_->UpdateWireIns();
     
-    // Set high threshold via WireIn  
-    // Address 0x06-0x07: High threshold (16-bit)
-    device_->SetWireInValue(0x06, highThresh, 0xFFFF);
+    // Set ep02wire: NEO threshold + reserved fields
+    uint32_t ep02wire = neoThresh;  // NEO threshold in lower 16 bits
+    device_->SetWireInValue(0x02, ep02wire, 0xFFFFFFFF);
     device_->UpdateWireIns();
     
-    // Trigger threshold update
-    device_->ActivateTriggerIn(0x40, 3); // Trigger bit 3 for threshold update
-    device_->UpdateWireIns();
-    
-    std::cout << "Thresholds set successfully" << std::endl;
+    std::cout << "Thresholds set successfully - NEO: " << neoThresh << ", Seizure channels: " << (int)seizureThresh << std::endl;
     return true;
 }
 
@@ -230,6 +234,11 @@ void AsicSender::sendWaveformData(const std::vector<uint8_t>& waveformData) {
     std::cout << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
     std::cout << "] Sending waveform data to the FPGA..." << std::endl;
     
+    // Send timestamp to FPGA via ep01wire (input timestamp)
+    uint32_t timestamp = static_cast<uint32_t>(time_t);  // Unix timestamp
+    device_->SetWireInValue(0x01, timestamp, 0xFFFFFFFF);
+    device_->UpdateWireIns();
+    
     // Send data to FPGA
     if (!writeToFpga(paddedData)) {
         std::cerr << "Failed to write waveform data to ASIC FPGA" << std::endl;
@@ -251,6 +260,23 @@ void AsicSender::sendWaveformData(const std::vector<uint8_t>& waveformData) {
         std::cout << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         std::cout << "] Data successfully read from ASIC FPGA!" << std::endl;
     }
+    
+    // Read seizure detection results from WireOut
+    device_->UpdateWireOuts();
+    uint32_t seizureResults = device_->GetWireOutValue(0x30);  // ep30wire contains HALO_outs
+    
+    // Extract seizure detection results according to corrected FPGA format:
+    // HALO_outs[31:2] = seizure_timestamp[29:0]
+    // HALO_outs[1] = seizure_result_valid
+    // HALO_outs[0] = seizure_detected
+    bool seizureDetected = (seizureResults & 0x01) != 0;
+    bool resultValid = (seizureResults & 0x02) != 0;
+    uint32_t seizureTimestamp = (seizureResults >> 2) & 0x3FFFFFFF;  // 30-bit timestamp
+    
+    std::cout << "Seizure Detection Results:" << std::endl;
+    std::cout << "  Detected: " << (seizureDetected ? "YES" : "NO") << std::endl;
+    std::cout << "  Valid: " << (resultValid ? "YES" : "NO") << std::endl;
+    std::cout << "  Timestamp: " << seizureTimestamp << std::endl;
     
     // Analyze FPGA response data with original neural data
     if (data_analyzer_) {

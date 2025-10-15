@@ -39,7 +39,7 @@ int main(int /* argc */, char* /* argv */[]) {
         
         // Create and initialize the ASIC sender (optional)
         AsicSender asicSender;
-        bool asicInitialized = asicSender.initialize("2437001CWG", "asic-sender/First.bit");
+        bool asicInitialized = asicSender.initialize("2437001CWG", "bitstreams/seizure_pipe_test0.bit");
         if (!asicInitialized) {
             std::cerr << "Warning: ASIC Sender not available, continuing without FPGA processing." << std::endl;
         }
