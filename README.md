@@ -193,7 +193,7 @@ We modified the original Intan RHX GUI to add an Advanced setting: a "Pipelined 
 
 - ~~Write the pipeline SPEC~~
 - ~~Verify pipeline logic end-to-end~~
-- **IMPORTANT:** Correct the ASIC response decoder
+- ~~**IMPORTANT:** Correct the ASIC response decoder~~
 - ~~Decode ASIC response~~
 - ~~Fix the logging format in HDF5 files~~
 - ~~Run the pipeline at 1 kHz acquisition frequency~~
