@@ -37,7 +37,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = seizure_analyzer1.0.0
-DISTDIR = /Users/antonmelnychuk/Desktop/HALOTesting/data-analyser/src/gui/.tmp/seizure_analyzer1.0.0
+DISTDIR = /Users/antonmelnychuk/workspace/VerifyHalo/VerifyHaloGUI/data-analyser/src/gui/.tmp/seizure_analyzer1.0.0
 LINK          = /Library/Developer/CommandLineTools/usr/bin/clang++
 LFLAGS        = -stdlib=libc++ -headerpad_max_install_names $(EXPORT_ARCH_ARGS) -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -mmacosx-version-min=14.0 -Wl,-rpath,@executable_path/../Frameworks -Wl,-rpath,/opt/homebrew/lib
 LIBS          = $(SUBLIBS) -F/opt/homebrew/lib -L/opt/homebrew/lib -lhdf5 -framework QtWidgets -framework QtGui -framework AppKit -framework ImageIO -framework Metal -framework QtCore -framework IOKit -framework DiskArbitration -framework UniformTypeIdentifiers -framework AGL -framework OpenGL   
@@ -455,12 +455,12 @@ TARGET        = seizure_analyzer.app/Contents/MacOS/seizure_analyzer
 EXPORT_QMAKE_MAC_SDK = macosx
 EXPORT_QMAKE_MAC_SDK_VERSION = 15.2
 EXPORT_QMAKE_XCODE_DEVELOPER_PATH = /Library/Developer/CommandLineTools
-EXPORT__QMAKE_STASH_ = /Users/antonmelnychuk/Desktop/HALOTesting/data-analyser/src/gui/.qmake.stash
+EXPORT__QMAKE_STASH_ = /Users/antonmelnychuk/workspace/VerifyHalo/VerifyHaloGUI/data-analyser/src/gui/.qmake.stash
 EXPORT_VALID_ARCHS = arm64
 EXPORT_DEFAULT_ARCHS = arm64
 EXPORT_ARCHS = $(filter $(EXPORT_VALID_ARCHS), $(if $(ARCHS), $(ARCHS), $(if $(EXPORT_DEFAULT_ARCHS), $(EXPORT_DEFAULT_ARCHS), $(EXPORT_VALID_ARCHS))))
 EXPORT_ARCH_ARGS = $(foreach arch, $(if $(EXPORT_ARCHS), $(EXPORT_ARCHS), $(EXPORT_VALID_ARCHS)), -arch $(arch))
-EXPORT__PRO_FILE_ = /Users/antonmelnychuk/Desktop/HALOTesting/data-analyser/src/gui/seizure_analyzer.pro
+EXPORT__PRO_FILE_ = /Users/antonmelnychuk/workspace/VerifyHalo/VerifyHaloGUI/data-analyser/src/gui/seizure_analyzer.pro
 
 
 include /opt/homebrew/Cellar/qt/6.9.1/share/qt/mkspecs/features/mac/sdk.mk
@@ -1532,67 +1532,16 @@ moc_seizure_analyzer.cpp: seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qcalendar.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QFileSystemWatcher \
 		/opt/homebrew/lib/QtCore.framework/Headers/qfilesystemwatcher.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QComboBox \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qcombobox.h \
-		../core/hdf5_reader.h \
-		/opt/homebrew/include/hdf5.h \
-		/opt/homebrew/include/H5public.h \
-		/opt/homebrew/include/H5pubconf.h \
-		/opt/homebrew/include/H5version.h \
-		/opt/homebrew/include/H5api_adpt.h \
-		/opt/homebrew/include/H5Apublic.h \
-		/opt/homebrew/include/H5Ipublic.h \
-		/opt/homebrew/include/H5Opublic.h \
-		/opt/homebrew/include/H5Tpublic.h \
-		/opt/homebrew/include/H5ACpublic.h \
-		/opt/homebrew/include/H5Cpublic.h \
-		/opt/homebrew/include/H5Dpublic.h \
-		/opt/homebrew/include/H5Epublic.h \
-		/opt/homebrew/include/H5Epubgen.h \
-		/opt/homebrew/include/H5ESpublic.h \
-		/opt/homebrew/include/H5Fpublic.h \
-		/opt/homebrew/include/H5FDpublic.h \
-		/opt/homebrew/include/H5Gpublic.h \
-		/opt/homebrew/include/H5Lpublic.h \
-		/opt/homebrew/include/H5Mpublic.h \
-		/opt/homebrew/include/H5VLpublic.h \
-		/opt/homebrew/include/H5VLconnector.h \
-		/opt/homebrew/include/H5Rpublic.h \
-		/opt/homebrew/include/H5MMpublic.h \
-		/opt/homebrew/include/H5Ppublic.h \
-		/opt/homebrew/include/H5Spublic.h \
-		/opt/homebrew/include/H5Zpublic.h \
-		/opt/homebrew/include/H5PLpublic.h \
-		/opt/homebrew/include/H5ESdevelop.h \
-		/opt/homebrew/include/H5FDdevelop.h \
-		/opt/homebrew/include/H5Idevelop.h \
-		/opt/homebrew/include/H5Ldevelop.h \
-		/opt/homebrew/include/H5Tdevelop.h \
-		/opt/homebrew/include/H5TSdevelop.h \
-		/opt/homebrew/include/H5Zdevelop.h \
-		/opt/homebrew/include/H5VLconnector_passthru.h \
-		/opt/homebrew/include/H5VLnative.h \
-		/opt/homebrew/include/H5FDcore.h \
-		/opt/homebrew/include/H5FDdirect.h \
-		/opt/homebrew/include/H5FDfamily.h \
-		/opt/homebrew/include/H5FDhdfs.h \
-		/opt/homebrew/include/H5FDlog.h \
-		/opt/homebrew/include/H5FDmirror.h \
-		/opt/homebrew/include/H5FDmpi.h \
-		/opt/homebrew/include/H5FDmpio.h \
-		/opt/homebrew/include/H5FDmulti.h \
-		/opt/homebrew/include/H5FDonion.h \
-		/opt/homebrew/include/H5FDros3.h \
-		/opt/homebrew/include/H5FDsec2.h \
-		/opt/homebrew/include/H5FDsplitter.h \
-		/opt/homebrew/include/H5FDstdio.h \
-		/opt/homebrew/include/H5FDwindows.h \
-		/opt/homebrew/include/H5FDsubfiling.h \
-		/opt/homebrew/include/H5FDioc.h \
-		/opt/homebrew/include/H5VLpassthru.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QListWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qlistwidget.h \
+		/opt/homebrew/include/QtWidgets/qlistview.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QSet \
+		/opt/homebrew/lib/QtCore.framework/Headers/qset.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qwidget.h \
 		moc_predefs.h \
 		/opt/homebrew/share/qt/libexec/moc
-	/opt/homebrew/share/qt/libexec/moc $(DEFINES) --include /Users/antonmelnychuk/Desktop/HALOTesting/data-analyser/src/gui/moc_predefs.h -I/opt/homebrew/share/qt/mkspecs/macx-clang -I/Users/antonmelnychuk/Desktop/HALOTesting/data-analyser/src/gui -I/opt/homebrew/include -I/opt/homebrew/lib/QtWidgets.framework/Headers -I/opt/homebrew/lib/QtGui.framework/Headers -I/opt/homebrew/lib/QtCore.framework/Headers -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1 -I/Library/Developer/CommandLineTools/usr/lib/clang/16/include -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -I/Library/Developer/CommandLineTools/usr/include -F/opt/homebrew/lib seizure_analyzer.h -o moc_seizure_analyzer.cpp
+	/opt/homebrew/share/qt/libexec/moc $(DEFINES) --include /Users/antonmelnychuk/workspace/VerifyHalo/VerifyHaloGUI/data-analyser/src/gui/moc_predefs.h -I/opt/homebrew/share/qt/mkspecs/macx-clang -I/Users/antonmelnychuk/workspace/VerifyHalo/VerifyHaloGUI/data-analyser/src/gui -I/opt/homebrew/include -I/opt/homebrew/lib/QtWidgets.framework/Headers -I/opt/homebrew/lib/QtGui.framework/Headers -I/opt/homebrew/lib/QtCore.framework/Headers -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1 -I/Library/Developer/CommandLineTools/usr/lib/clang/16/include -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -I/Library/Developer/CommandLineTools/usr/include -F/opt/homebrew/lib seizure_analyzer.h -o moc_seizure_analyzer.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -1858,70 +1807,17 @@ main.o: ../main.cpp /opt/homebrew/lib/QtWidgets.framework/Headers/QApplication \
 		/opt/homebrew/include/QtCore/qcalendar.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QFileSystemWatcher \
 		/opt/homebrew/lib/QtCore.framework/Headers/qfilesystemwatcher.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QComboBox \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qcombobox.h \
-		../core/hdf5_reader.h \
-		/opt/homebrew/include/hdf5.h \
-		/opt/homebrew/include/H5public.h \
-		/opt/homebrew/include/H5pubconf.h \
-		/opt/homebrew/include/H5version.h \
-		/opt/homebrew/include/H5api_adpt.h \
-		/opt/homebrew/include/H5Apublic.h \
-		/opt/homebrew/include/H5Ipublic.h \
-		/opt/homebrew/include/H5Opublic.h \
-		/opt/homebrew/include/H5Tpublic.h \
-		/opt/homebrew/include/H5ACpublic.h \
-		/opt/homebrew/include/H5Cpublic.h \
-		/opt/homebrew/include/H5Dpublic.h \
-		/opt/homebrew/include/H5Epublic.h \
-		/opt/homebrew/include/H5Epubgen.h \
-		/opt/homebrew/include/H5ESpublic.h \
-		/opt/homebrew/include/H5Fpublic.h \
-		/opt/homebrew/include/H5FDpublic.h \
-		/opt/homebrew/include/H5Gpublic.h \
-		/opt/homebrew/include/H5Lpublic.h \
-		/opt/homebrew/include/H5Mpublic.h \
-		/opt/homebrew/include/H5VLpublic.h \
-		/opt/homebrew/include/H5VLconnector.h \
-		/opt/homebrew/include/H5Rpublic.h \
-		/opt/homebrew/include/H5MMpublic.h \
-		/opt/homebrew/include/H5Ppublic.h \
-		/opt/homebrew/include/H5Spublic.h \
-		/opt/homebrew/include/H5Zpublic.h \
-		/opt/homebrew/include/H5PLpublic.h \
-		/opt/homebrew/include/H5ESdevelop.h \
-		/opt/homebrew/include/H5FDdevelop.h \
-		/opt/homebrew/include/H5Idevelop.h \
-		/opt/homebrew/include/H5Ldevelop.h \
-		/opt/homebrew/include/H5Tdevelop.h \
-		/opt/homebrew/include/H5TSdevelop.h \
-		/opt/homebrew/include/H5Zdevelop.h \
-		/opt/homebrew/include/H5VLconnector_passthru.h \
-		/opt/homebrew/include/H5VLnative.h \
-		/opt/homebrew/include/H5FDcore.h \
-		/opt/homebrew/include/H5FDdirect.h \
-		/opt/homebrew/include/H5FDfamily.h \
-		/opt/homebrew/include/H5FDhdfs.h \
-		/opt/homebrew/include/H5FDlog.h \
-		/opt/homebrew/include/H5FDmirror.h \
-		/opt/homebrew/include/H5FDmpi.h \
-		/opt/homebrew/include/H5FDmpio.h \
-		/opt/homebrew/include/H5FDmulti.h \
-		/opt/homebrew/include/H5FDonion.h \
-		/opt/homebrew/include/H5FDros3.h \
-		/opt/homebrew/include/H5FDsec2.h \
-		/opt/homebrew/include/H5FDsplitter.h \
-		/opt/homebrew/include/H5FDstdio.h \
-		/opt/homebrew/include/H5FDwindows.h \
-		/opt/homebrew/include/H5FDsubfiling.h \
-		/opt/homebrew/include/H5FDioc.h \
-		/opt/homebrew/include/H5VLpassthru.h
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QListWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qlistwidget.h \
+		/opt/homebrew/include/QtWidgets/qlistview.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QSet \
+		/opt/homebrew/lib/QtCore.framework/Headers/qset.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qwidget.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../main.cpp
 
-seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
-		/opt/homebrew/include/QtWidgets/qtwidgetsglobal.h \
+seizure_analyzer.o: seizure_analyzer.cpp /opt/homebrew/lib/QtGui.framework/Headers/QMouseEvent \
+		/opt/homebrew/lib/QtGui.framework/Headers/qevent.h \
 		/opt/homebrew/include/QtGui/qtguiglobal.h \
 		/opt/homebrew/include/QtCore/qglobal.h \
 		/opt/homebrew/include/QtCore/qtcoreglobal.h \
@@ -1971,10 +1867,10 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qversiontagging.h \
 		/opt/homebrew/include/QtGui/qtgui-config.h \
 		/opt/homebrew/include/QtGui/qtguiexports.h \
-		/opt/homebrew/include/QtWidgets/qtwidgets-config.h \
-		/opt/homebrew/include/QtWidgets/qtwidgetsexports.h \
-		/opt/homebrew/include/QtWidgets/qwidget.h \
-		/opt/homebrew/include/QtGui/qwindowdefs.h \
+		/opt/homebrew/include/QtCore/qcoreevent.h \
+		/opt/homebrew/include/QtCore/qbasictimer.h \
+		/opt/homebrew/include/QtCore/qabstracteventdispatcher.h \
+		/opt/homebrew/include/QtCore/qobject.h \
 		/opt/homebrew/include/QtCore/qobjectdefs.h \
 		/opt/homebrew/include/QtCore/qnamespace.h \
 		/opt/homebrew/include/QtCore/qcompare.h \
@@ -1984,7 +1880,6 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qtmetamacros.h \
 		/opt/homebrew/include/QtCore/qobjectdefs_impl.h \
 		/opt/homebrew/include/QtCore/qfunctionaltools_impl.h \
-		/opt/homebrew/include/QtCore/qobject.h \
 		/opt/homebrew/include/QtCore/qstring.h \
 		/opt/homebrew/include/QtCore/qchar.h \
 		/opt/homebrew/include/QtCore/qstringview.h \
@@ -2018,15 +1913,9 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qstringlist.h \
 		/opt/homebrew/include/QtCore/qalgorithms.h \
 		/opt/homebrew/include/QtCore/qstringmatcher.h \
-		/opt/homebrew/include/QtCore/qcoreevent.h \
-		/opt/homebrew/include/QtCore/qbasictimer.h \
-		/opt/homebrew/include/QtCore/qabstracteventdispatcher.h \
-		/opt/homebrew/include/QtCore/qeventloop.h \
-		/opt/homebrew/include/QtCore/qdeadlinetimer.h \
-		/opt/homebrew/include/QtCore/qelapsedtimer.h \
+		/opt/homebrew/include/QtCore/qscopedpointer.h \
 		/opt/homebrew/include/QtCore/qmetatype.h \
 		/opt/homebrew/include/QtCore/qdatastream.h \
-		/opt/homebrew/include/QtCore/qscopedpointer.h \
 		/opt/homebrew/include/QtCore/qiodevicebase.h \
 		/opt/homebrew/include/QtCore/qfloat16.h \
 		/opt/homebrew/include/QtCore/qmath.h \
@@ -2038,56 +1927,34 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qscopeguard.h \
 		/opt/homebrew/include/QtCore/qobject_impl.h \
 		/opt/homebrew/include/QtCore/qbindingstorage.h \
-		/opt/homebrew/include/QtCore/qmargins.h \
-		/opt/homebrew/include/QtCore/q23utility.h \
-		/opt/homebrew/include/QtCore/q20utility.h \
-		/opt/homebrew/include/QtGui/qaction.h \
-		/opt/homebrew/include/QtGui/qkeysequence.h \
-		/opt/homebrew/include/QtGui/qicon.h \
-		/opt/homebrew/include/QtCore/qsize.h \
-		/opt/homebrew/include/QtGui/qpixmap.h \
-		/opt/homebrew/include/QtGui/qpaintdevice.h \
-		/opt/homebrew/include/QtCore/qrect.h \
-		/opt/homebrew/include/QtCore/qpoint.h \
-		/opt/homebrew/include/QtGui/qcolor.h \
-		/opt/homebrew/include/QtGui/qrgb.h \
-		/opt/homebrew/include/QtGui/qrgba64.h \
-		/opt/homebrew/include/QtCore/qshareddata.h \
-		/opt/homebrew/include/QtGui/qimage.h \
-		/opt/homebrew/include/QtGui/qpixelformat.h \
-		/opt/homebrew/include/QtGui/qtransform.h \
-		/opt/homebrew/include/QtGui/qpolygon.h \
-		/opt/homebrew/include/QtGui/qregion.h \
+		/opt/homebrew/include/QtCore/qeventloop.h \
+		/opt/homebrew/include/QtCore/qdeadlinetimer.h \
+		/opt/homebrew/include/QtCore/qelapsedtimer.h \
+		/opt/homebrew/include/QtCore/qiodevice.h \
 		/opt/homebrew/include/QtCore/qspan.h \
 		/opt/homebrew/include/QtCore/q20iterator.h \
-		/opt/homebrew/include/QtCore/qline.h \
+		/opt/homebrew/include/QtCore/qurl.h \
 		/opt/homebrew/include/QtCore/qvariant.h \
 		/opt/homebrew/include/QtCore/qdebug.h \
 		/opt/homebrew/include/QtCore/qtextstream.h \
 		/opt/homebrew/include/QtCore/qcontiguouscache.h \
 		/opt/homebrew/include/QtCore/qsharedpointer.h \
+		/opt/homebrew/include/QtCore/qshareddata.h \
 		/opt/homebrew/include/QtCore/qsharedpointer_impl.h \
 		/opt/homebrew/include/QtCore/qmap.h \
 		/opt/homebrew/include/QtCore/qshareddata_impl.h \
 		/opt/homebrew/include/QtCore/qset.h \
 		/opt/homebrew/include/QtCore/qhash.h \
 		/opt/homebrew/include/QtCore/qvarlengtharray.h \
-		/opt/homebrew/include/QtGui/qpalette.h \
-		/opt/homebrew/include/QtGui/qbrush.h \
-		/opt/homebrew/include/QtGui/qfont.h \
-		/opt/homebrew/include/QtCore/qendian.h \
-		/opt/homebrew/include/QtGui/qfontmetrics.h \
-		/opt/homebrew/include/QtGui/qfontinfo.h \
-		/opt/homebrew/include/QtGui/qfontvariableaxis.h \
-		/opt/homebrew/include/QtWidgets/qsizepolicy.h \
-		/opt/homebrew/include/QtGui/qcursor.h \
-		/opt/homebrew/include/QtGui/qbitmap.h \
-		/opt/homebrew/include/QtGui/qevent.h \
-		/opt/homebrew/include/QtCore/qiodevice.h \
-		/opt/homebrew/include/QtCore/qurl.h \
+		/opt/homebrew/include/QtCore/q23utility.h \
+		/opt/homebrew/include/QtCore/q20utility.h \
 		/opt/homebrew/include/QtGui/qeventpoint.h \
 		/opt/homebrew/include/QtGui/qvector2d.h \
 		/opt/homebrew/include/QtGui/qvectornd.h \
+		/opt/homebrew/include/QtCore/qpoint.h \
+		/opt/homebrew/include/QtCore/qrect.h \
+		/opt/homebrew/include/QtCore/qmargins.h \
+		/opt/homebrew/include/QtCore/qsize.h \
 		/opt/homebrew/include/QtGui/qpointingdevice.h \
 		/opt/homebrew/include/QtGui/qinputdevice.h \
 		/opt/homebrew/include/QtGui/qscreen.h \
@@ -2097,6 +1964,11 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/QSize \
 		/opt/homebrew/include/QtCore/QSizeF \
 		/opt/homebrew/include/QtGui/QTransform \
+		/opt/homebrew/include/QtGui/qtransform.h \
+		/opt/homebrew/include/QtGui/qpolygon.h \
+		/opt/homebrew/include/QtGui/qregion.h \
+		/opt/homebrew/include/QtGui/qwindowdefs.h \
+		/opt/homebrew/include/QtCore/qline.h \
 		/opt/homebrew/include/QtCore/qnativeinterface.h \
 		/opt/homebrew/include/QtGui/qscreen_platform.h \
 		/opt/homebrew/include/QtGui/qguiapplication.h \
@@ -2116,6 +1988,34 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtGui/qinputmethod.h \
 		/opt/homebrew/include/QtCore/qlocale.h \
 		/opt/homebrew/include/QtGui/qguiapplication_platform.h \
+		/opt/homebrew/include/QtGui/qkeysequence.h \
+		seizure_analyzer.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QMainWindow \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qmainwindow.h \
+		/opt/homebrew/include/QtWidgets/qtwidgetsglobal.h \
+		/opt/homebrew/include/QtWidgets/qtwidgets-config.h \
+		/opt/homebrew/include/QtWidgets/qtwidgetsexports.h \
+		/opt/homebrew/include/QtWidgets/qwidget.h \
+		/opt/homebrew/include/QtGui/qaction.h \
+		/opt/homebrew/include/QtGui/qicon.h \
+		/opt/homebrew/include/QtGui/qpixmap.h \
+		/opt/homebrew/include/QtGui/qpaintdevice.h \
+		/opt/homebrew/include/QtGui/qcolor.h \
+		/opt/homebrew/include/QtGui/qrgb.h \
+		/opt/homebrew/include/QtGui/qrgba64.h \
+		/opt/homebrew/include/QtGui/qimage.h \
+		/opt/homebrew/include/QtGui/qpixelformat.h \
+		/opt/homebrew/include/QtGui/qpalette.h \
+		/opt/homebrew/include/QtGui/qbrush.h \
+		/opt/homebrew/include/QtGui/qfont.h \
+		/opt/homebrew/include/QtCore/qendian.h \
+		/opt/homebrew/include/QtGui/qfontmetrics.h \
+		/opt/homebrew/include/QtGui/qfontinfo.h \
+		/opt/homebrew/include/QtGui/qfontvariableaxis.h \
+		/opt/homebrew/include/QtWidgets/qsizepolicy.h \
+		/opt/homebrew/include/QtGui/qcursor.h \
+		/opt/homebrew/include/QtGui/qbitmap.h \
+		/opt/homebrew/include/QtGui/qevent.h \
 		/opt/homebrew/include/QtWidgets/qtabwidget.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QTableWidget \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qtablewidget.h \
@@ -2162,64 +2062,13 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qcalendar.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QFileSystemWatcher \
 		/opt/homebrew/lib/QtCore.framework/Headers/qfilesystemwatcher.h \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/QComboBox \
-		/opt/homebrew/lib/QtWidgets.framework/Headers/qcombobox.h \
-		../core/hdf5_reader.h \
-		/opt/homebrew/include/hdf5.h \
-		/opt/homebrew/include/H5public.h \
-		/opt/homebrew/include/H5pubconf.h \
-		/opt/homebrew/include/H5version.h \
-		/opt/homebrew/include/H5api_adpt.h \
-		/opt/homebrew/include/H5Apublic.h \
-		/opt/homebrew/include/H5Ipublic.h \
-		/opt/homebrew/include/H5Opublic.h \
-		/opt/homebrew/include/H5Tpublic.h \
-		/opt/homebrew/include/H5ACpublic.h \
-		/opt/homebrew/include/H5Cpublic.h \
-		/opt/homebrew/include/H5Dpublic.h \
-		/opt/homebrew/include/H5Epublic.h \
-		/opt/homebrew/include/H5Epubgen.h \
-		/opt/homebrew/include/H5ESpublic.h \
-		/opt/homebrew/include/H5Fpublic.h \
-		/opt/homebrew/include/H5FDpublic.h \
-		/opt/homebrew/include/H5Gpublic.h \
-		/opt/homebrew/include/H5Lpublic.h \
-		/opt/homebrew/include/H5Mpublic.h \
-		/opt/homebrew/include/H5VLpublic.h \
-		/opt/homebrew/include/H5VLconnector.h \
-		/opt/homebrew/include/H5Rpublic.h \
-		/opt/homebrew/include/H5MMpublic.h \
-		/opt/homebrew/include/H5Ppublic.h \
-		/opt/homebrew/include/H5Spublic.h \
-		/opt/homebrew/include/H5Zpublic.h \
-		/opt/homebrew/include/H5PLpublic.h \
-		/opt/homebrew/include/H5ESdevelop.h \
-		/opt/homebrew/include/H5FDdevelop.h \
-		/opt/homebrew/include/H5Idevelop.h \
-		/opt/homebrew/include/H5Ldevelop.h \
-		/opt/homebrew/include/H5Tdevelop.h \
-		/opt/homebrew/include/H5TSdevelop.h \
-		/opt/homebrew/include/H5Zdevelop.h \
-		/opt/homebrew/include/H5VLconnector_passthru.h \
-		/opt/homebrew/include/H5VLnative.h \
-		/opt/homebrew/include/H5FDcore.h \
-		/opt/homebrew/include/H5FDdirect.h \
-		/opt/homebrew/include/H5FDfamily.h \
-		/opt/homebrew/include/H5FDhdfs.h \
-		/opt/homebrew/include/H5FDlog.h \
-		/opt/homebrew/include/H5FDmirror.h \
-		/opt/homebrew/include/H5FDmpi.h \
-		/opt/homebrew/include/H5FDmpio.h \
-		/opt/homebrew/include/H5FDmulti.h \
-		/opt/homebrew/include/H5FDonion.h \
-		/opt/homebrew/include/H5FDros3.h \
-		/opt/homebrew/include/H5FDsec2.h \
-		/opt/homebrew/include/H5FDsplitter.h \
-		/opt/homebrew/include/H5FDstdio.h \
-		/opt/homebrew/include/H5FDwindows.h \
-		/opt/homebrew/include/H5FDsubfiling.h \
-		/opt/homebrew/include/H5FDioc.h \
-		/opt/homebrew/include/H5VLpassthru.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QListWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qlistwidget.h \
+		/opt/homebrew/include/QtWidgets/qlistview.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QSet \
+		/opt/homebrew/lib/QtCore.framework/Headers/qset.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QWidget \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qwidget.h \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/QApplication \
 		/opt/homebrew/lib/QtWidgets.framework/Headers/qapplication.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QDir \
@@ -2230,6 +2079,8 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/include/QtCore/qfile.h \
 		/opt/homebrew/include/QtCore/qfileinfo.h \
 		/opt/homebrew/include/QtCore/qtimezone.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QFile \
+		/opt/homebrew/lib/QtCore.framework/Headers/qfile.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QFileInfo \
 		/opt/homebrew/lib/QtCore.framework/Headers/qfileinfo.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QDateTime \
@@ -2245,8 +2096,26 @@ seizure_analyzer.o: seizure_analyzer.cpp seizure_analyzer.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/qdebug.h \
 		/opt/homebrew/lib/QtCore.framework/Headers/QTextStream \
 		/opt/homebrew/lib/QtCore.framework/Headers/qtextstream.h \
-		/opt/homebrew/lib/QtCore.framework/Headers/QRegularExpression \
-		/opt/homebrew/lib/QtCore.framework/Headers/qregularexpression.h
+		/opt/homebrew/lib/QtCore.framework/Headers/QDataStream \
+		/opt/homebrew/lib/QtCore.framework/Headers/qdatastream.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QListWidgetItem \
+		/opt/homebrew/lib/QtGui.framework/Headers/QDesktopServices \
+		/opt/homebrew/lib/QtGui.framework/Headers/qdesktopservices.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QUrl \
+		/opt/homebrew/lib/QtCore.framework/Headers/qurl.h \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/QDialog \
+		/opt/homebrew/lib/QtWidgets.framework/Headers/qdialog.h \
+		/opt/homebrew/lib/QtGui.framework/Headers/QPainter \
+		/opt/homebrew/lib/QtGui.framework/Headers/qpainter.h \
+		/opt/homebrew/include/QtGui/qtextoption.h \
+		/opt/homebrew/include/QtGui/qpen.h \
+		/opt/homebrew/lib/QtGui.framework/Headers/QPaintEvent \
+		/opt/homebrew/lib/QtGui.framework/Headers/QPainterPath \
+		/opt/homebrew/lib/QtGui.framework/Headers/qpainterpath.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QTimeZone \
+		/opt/homebrew/lib/QtCore.framework/Headers/qtimezone.h \
+		/opt/homebrew/lib/QtCore.framework/Headers/QVector \
+		/opt/homebrew/lib/QtCore.framework/Headers/qvector.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o seizure_analyzer.o seizure_analyzer.cpp
 
 hdf5_reader.o: ../core/hdf5_reader.cpp ../core/hdf5_reader.h \

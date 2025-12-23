@@ -1,7 +1,8 @@
+#include <QMouseEvent>
 #include "seizure_analyzer.h"
-#include "../core/hdf5_reader.h"
 #include <QApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
 #include <QHeaderView>
@@ -9,15 +10,38 @@
 #include <QStandardPaths>
 #include <QDebug>
 #include <QTextStream>
-#include <QRegularExpression>
+#include <QDataStream>
+#include <QListWidgetItem>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHeaderView>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QPushButton>
+#include <QMessageBox>
+#include <QDialog>
+#include <QPainter>
+#include <QPaintEvent>
+#include <QPainterPath>
+#include <QTimeZone>
+
+// These GUI display constants must match the FPGA/ASIC datapath configuration.
+// See fpga/halo_seizure datapath `define`s:
+//   THRESHOLD_VALUE, WINDOW_TIMEOUT, TRANSITION_COUNT, CHANNELS_PER_PACKET.
+static const int kCfgThresholdValue    = 25000;
+static const int kCfgWindowTimeout     = 200;
+static const int kCfgTransitionCount   = 30;
+static const int kCfgChannelsPerPacket = 32;
+
+#include <QVector>
 #include <chrono>
+#include <algorithm>
 
 SeizureAnalyzer::SeizureAnalyzer(QWidget *parent)
     : QMainWindow(parent)
     , centralWidget(nullptr)
     , fileWatcher(nullptr)
     , updateTimer(nullptr)
-    , selectedChannel(0)
 {
     // Get the directory where the executable is located
     QString appDir = QCoreApplication::applicationDirPath();
@@ -64,20 +88,28 @@ void SeizureAnalyzer::setupUI()
     connect(reloadButton, &QPushButton::clicked, this, &SeizureAnalyzer::reloadData);
     buttonLayout->addWidget(reloadButton);
     
-    // Channel selector
-    buttonLayout->addWidget(new QLabel("Channel:", this));
-    channelSelector = new QComboBox(this);
+    // Channel selector (multi-select popup with checkboxes)
+    buttonLayout->addWidget(new QLabel("Channels:", this));
+    channelButton = new QPushButton("Select Channels", this);
+    channelButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    buttonLayout->addWidget(channelButton);
+
+    channelPopup = new QWidget(this, Qt::Popup);
+    channelPopup->setWindowFlag(Qt::FramelessWindowHint);
+    QVBoxLayout *popupLayout = new QVBoxLayout(channelPopup);
+    popupLayout->setContentsMargins(4,4,4,4);
+    channelList = new QListWidget(channelPopup);
+    channelList->setSelectionMode(QAbstractItemView::NoSelection);
     for (int i = 0; i < 32; ++i) {
-        QString channelName = QString("A-%1").arg(i, 3, 10, QChar('0')); // A-000, A-001, etc.
-        channelSelector->addItem(channelName);
+        QString channelName = QString("A-%1").arg(i, 3, 10, QChar('0'));
+        QListWidgetItem *item = new QListWidgetItem(channelName, channelList);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Unchecked);
     }
-    connect(channelSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), 
-            this, &SeizureAnalyzer::onChannelChanged);
-    buttonLayout->addWidget(channelSelector);
-    
-    // Channel info label
-    channelInfoLabel = new QLabel("", this);
-    buttonLayout->addWidget(channelInfoLabel);
+    channelList->viewport()->installEventFilter(this); // toggle without closing popup
+    popupLayout->addWidget(channelList);
+    connect(channelList, &QListWidget::itemChanged, this, &SeizureAnalyzer::onChannelItemChanged);
+    connect(channelButton, &QPushButton::clicked, this, &SeizureAnalyzer::showChannelPopup);
     
     buttonLayout->addStretch();
     
@@ -92,21 +124,26 @@ void SeizureAnalyzer::setupUI()
     todaySeizuresLabel->setStyleSheet("font-size: 14px;");
     monthlySeizuresLabel->setStyleSheet("font-size: 14px;");
     lastUpdateLabel->setStyleSheet("font-size: 12px; color: gray;");
+
+    // Detection configuration (matches FPGA/ASIC settings)
+    thresholdLabel = new QLabel(QString("THR = %1 (Max ADC = 65535)").arg(kCfgThresholdValue), this);
+    windowTimeoutLabel = new QLabel(QString("WINDOW_TIMEOUT = %1 samples").arg(kCfgWindowTimeout), this);
+    transitionCountLabel = new QLabel(QString("TRANSITION_COUNT = %1").arg(kCfgTransitionCount), this);
+    channelsPerPacketLabel = new QLabel(QString("CHANNELS = %1").arg(kCfgChannelsPerPacket), this);
+    QString cfgStyle = "font-size: 11px; color: gray;";
+    thresholdLabel->setStyleSheet(cfgStyle);
+    windowTimeoutLabel->setStyleSheet(cfgStyle);
+    transitionCountLabel->setStyleSheet(cfgStyle);
+    channelsPerPacketLabel->setStyleSheet(cfgStyle);
     
-    statsLayout->addWidget(totalSeizuresLabel, 0, 0);
-    statsLayout->addWidget(todaySeizuresLabel, 0, 1);
-    statsLayout->addWidget(monthlySeizuresLabel, 0, 2);
-    statsLayout->addWidget(lastUpdateLabel, 0, 3);
-    
-    // Latest detections table
-    QLabel *latestLabel = new QLabel("Latest 20 Detections:", this);
-    latestLabel->setStyleSheet("font-weight: bold;");
-    
-    latestDetectionsTable = new QTableWidget(20, 5, this);
-    latestDetectionsTable->setHorizontalHeaderLabels({"Timestamp", "Type", "Confidence", "Activity Level", "File"});
-    latestDetectionsTable->horizontalHeader()->setStretchLastSection(true);
-    latestDetectionsTable->setAlternatingRowColors(true);
-    latestDetectionsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    statsLayout->addWidget(totalSeizuresLabel,      0, 0);
+    statsLayout->addWidget(todaySeizuresLabel,      0, 1);
+    statsLayout->addWidget(monthlySeizuresLabel,    0, 2);
+    statsLayout->addWidget(lastUpdateLabel,         0, 3);
+    statsLayout->addWidget(thresholdLabel,          1, 0);
+    statsLayout->addWidget(windowTimeoutLabel,      1, 1);
+    statsLayout->addWidget(transitionCountLabel,    1, 2);
+    statsLayout->addWidget(channelsPerPacketLabel,  1, 3);
     
     // Daily counts table
     QLabel *dailyLabel = new QLabel("Daily Counts:", this);
@@ -116,26 +153,31 @@ void SeizureAnalyzer::setupUI()
     dailyCountsTable->setHorizontalHeaderLabels({"Date", "Seizure Count"});
     dailyCountsTable->horizontalHeader()->setStretchLastSection(true);
     dailyCountsTable->setAlternatingRowColors(true);
+    dailyCountsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    dailyCountsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    connect(dailyCountsTable->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &SeizureAnalyzer::onDailySelectionChanged);
     
-    // Channel data table
-    QLabel *channelLabel = new QLabel("Channel Data:", this);
-    channelLabel->setStyleSheet("font-weight: bold;");
+    // Latest detections table (will show all for selected day, or all days if none selected)
+    QLabel *latestLabel = new QLabel("Detections:", this);
+    latestLabel->setStyleSheet("font-weight: bold;");
     
-    channelDataTable = new QTableWidget(0, 3, this);
-    channelDataTable->setHorizontalHeaderLabels({"Timestamp", "Value (μV)", "File"});
-    channelDataTable->horizontalHeader()->setStretchLastSection(true);
-    channelDataTable->setAlternatingRowColors(true);
-    channelDataTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    latestDetectionsTable = new QTableWidget(0, 6, this);
+    latestDetectionsTable->setHorizontalHeaderLabels({"Channel", "Start", "End", "Duration (s)", "File", "RAW Waveform"});
+    latestDetectionsTable->horizontalHeader()->setStretchLastSection(true);
+    latestDetectionsTable->setAlternatingRowColors(true);
+    latestDetectionsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    latestDetectionsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    connect(latestDetectionsTable->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &SeizureAnalyzer::onDetectionSelectionChanged);
     
     // Add to main layout
     mainLayout->addLayout(buttonLayout);
     mainLayout->addLayout(statsLayout);
-    mainLayout->addWidget(latestLabel);
-    mainLayout->addWidget(latestDetectionsTable);
     mainLayout->addWidget(dailyLabel);
     mainLayout->addWidget(dailyCountsTable);
-    mainLayout->addWidget(channelLabel);
-    mainLayout->addWidget(channelDataTable);
+    mainLayout->addWidget(latestLabel);
+    mainLayout->addWidget(latestDetectionsTable);
 }
 
 void SeizureAnalyzer::reloadData()
@@ -183,88 +225,39 @@ void SeizureAnalyzer::scanLogFiles()
         return;
     }
     
-    // Scan all date directories (no debug output for long-term stability)
+    // Scan all date directories
     QStringList dateDirs = logsDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &dateDir : dateDirs) {
         QDir dayDir(logsDir.absoluteFilePath(dateDir));
-        QStringList h5Files = dayDir.entryList(QStringList() << "*.h5", QDir::Files);
+        QStringList binFiles = dayDir.entryList(QStringList() << "*.bin", QDir::Files);
         
-        for (const QString &h5File : h5Files) {
-            QString filePath = dayDir.absoluteFilePath(h5File);
-            parseHdf5File(filePath);
+        for (const QString &binFile : binFiles) {
+            QString filePath = dayDir.absoluteFilePath(binFile);
+            parseDetectionBin(filePath);
         }
     }
 }
 
-void SeizureAnalyzer::parseHdf5File(const QString &filePath)
+bool SeizureAnalyzer::eventFilter(QObject *watched, QEvent *event)
 {
-    QFileInfo fileInfo(filePath);
-    QString fileName = fileInfo.fileName();
-    
-    // Check if this is an hourly FPGA response file
-    if (fileName.startsWith("hour_") && fileName.endsWith(".h5")) {
-        // Extract hour from filename
-        QRegularExpression hourRegex("hour_(\\d+)\\.h5");
-        QRegularExpressionMatch match = hourRegex.match(fileName);
-        if (match.hasMatch()) {
-            // Extract hour from filename (for potential future use)
-            int hour = match.captured(1).toInt();
-            Q_UNUSED(hour); // Suppress unused variable warning
-            
-            // Extract date from directory name
-            QString dateStr = fileInfo.dir().dirName();
-            QDate date = QDate::fromString(dateStr, "yyyy-MM-dd");
-            
-            if (date.isValid()) {
-                // Parse the actual HDF5 file
-                Hdf5Reader reader;
-                if (reader.open(filePath.toStdString())) {
-                    std::vector<SeizureDetectionData> detections = reader.readSeizureDetections();
-                    
-                    for (const auto& detection : detections) {
-                        // Only add seizure detections (not normal activity)
-                        QString detectionType = QString::fromStdString(detection.responseType);
-                        if (detectionType == "SEIZURE_DETECTED" || detectionType == "THRESHOLD_EXCEEDED") {
-                            SeizureDetection qtDetection;
-                            
-                            // Convert std::chrono::time_point to QDateTime
-                            auto time_t = std::chrono::system_clock::to_time_t(detection.timestamp);
-                            qtDetection.timestamp = QDateTime::fromSecsSinceEpoch(time_t);
-                            
-                            qtDetection.type = detectionType;
-                            qtDetection.confidence = detection.confidence;
-                            qtDetection.activityLevel = detection.activityLevel;
-                            qtDetection.rawData = detection.rawData;
-                            qtDetection.filePath = filePath;
-                            qtDetection.channelIndex = detection.channelIndex;
-                            
-                            allDetections.append(qtDetection);
-                        }
-                    }
-                    
-                    reader.close();
-                } else {
-                    qDebug() << "Failed to open HDF5 file:" << filePath;
+    if (watched == channelList->viewport() && event->type() == QEvent::MouseButtonRelease) {
+        QMouseEvent *me = static_cast<QMouseEvent*>(event);
+        QPoint pos = me->pos();
+        QListWidgetItem *item = channelList->itemAt(pos);
+        if (item) {
+            item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+            return true; // consume to keep popup open
                 }
             }
-        }
-    }
-    
-    // Also check for neural data files (intan_shm_*.h5)
-    if (fileName.startsWith("intan_shm_") && fileName.endsWith(".h5")) {
-        // For neural data files, we could parse them too if needed
-        // For now, just count them as potential seizure sources
-    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void SeizureAnalyzer::updateSeizureCounts()
 {
-    // Filter detections by selected channel
-    QList<SeizureDetection> channelDetections;
-    for (const SeizureDetection &detection : allDetections) {
-        if (detection.channelIndex == selectedChannel) {
+    QList<SeizureRange> channelDetections;
+    for (const SeizureRange &detection : allDetections) {
+        if (!channelSelected(detection.channelIndex)) continue;
             channelDetections.append(detection);
-        }
     }
     
     int totalSeizures = channelDetections.size();
@@ -274,12 +267,12 @@ void SeizureAnalyzer::updateSeizureCounts()
     QDate today = QDate::currentDate();
     QString currentMonth = today.toString("yyyy-MM");
     
-    for (const SeizureDetection &detection : channelDetections) {
-        if (detection.timestamp.date() == today) {
+    for (const SeizureRange &detection : channelDetections) {
+        if (detection.start.date() == today) {
             todaySeizures++;
         }
         
-        QString detectionMonth = detection.timestamp.date().toString("yyyy-MM");
+        QString detectionMonth = detection.start.date().toString("yyyy-MM");
         if (detectionMonth == currentMonth) {
             monthlySeizures++;
         }
@@ -292,47 +285,61 @@ void SeizureAnalyzer::updateSeizureCounts()
 
 void SeizureAnalyzer::updateLatestDetections()
 {
-    // Filter detections by selected channel
-    QList<SeizureDetection> channelDetections;
-    for (const SeizureDetection &detection : allDetections) {
-        if (detection.channelIndex == selectedChannel) {
+    // If no day selected, show nothing (user must click a day)
+    if (!selectedDate.isValid()) {
+        latestDetectionsTable->setRowCount(0);
+        visibleDetections.clear();
+        updateChannelData();
+        return;
+    }
+
+    QList<SeizureRange> channelDetections;
+    for (const SeizureRange &detection : allDetections) {
+        if (!channelSelected(detection.channelIndex)) continue;
+        if (selectedDate.isValid() && detection.start.date() != selectedDate) continue;
             channelDetections.append(detection);
         }
-    }
-    
-    // Sort detections by timestamp (newest first)
     std::sort(channelDetections.begin(), channelDetections.end(), 
-              [](const SeizureDetection &a, const SeizureDetection &b) {
-                  return a.timestamp > b.timestamp;
+              [](const SeizureRange &a, const SeizureRange &b) {
+                  return a.end > b.end;
               });
     
-    // Take latest 20
-    int count = qMin(20, channelDetections.size());
+    visibleDetections = channelDetections;
+
+    int count = channelDetections.size();
     latestDetectionsTable->setRowCount(count);
     
     for (int i = 0; i < count; ++i) {
-        const SeizureDetection &detection = channelDetections[i];
-        
-        latestDetectionsTable->setItem(i, 0, new QTableWidgetItem(detection.timestamp.toString("yyyy-MM-dd hh:mm:ss")));
-        latestDetectionsTable->setItem(i, 1, new QTableWidgetItem(detection.type));
-        latestDetectionsTable->setItem(i, 2, new QTableWidgetItem(QString::number(detection.confidence, 'f', 3)));
-        latestDetectionsTable->setItem(i, 3, new QTableWidgetItem(QString::number(detection.activityLevel, 'f', 3)));
+        const SeizureRange &detection = channelDetections[i];
+        latestDetectionsTable->setItem(i, 0, new QTableWidgetItem(QString("A-%1").arg(detection.channelIndex, 3, 10, QChar('0'))));
+        latestDetectionsTable->setItem(i, 1, new QTableWidgetItem(detection.start.toString("yyyy-MM-dd hh:mm:ss.zzz")));
+        latestDetectionsTable->setItem(i, 2, new QTableWidgetItem(detection.end.toString("yyyy-MM-dd hh:mm:ss.zzz")));
+        latestDetectionsTable->setItem(i, 3, new QTableWidgetItem(QString::number(detection.durationSec, 'f', 3)));
         latestDetectionsTable->setItem(i, 4, new QTableWidgetItem(QFileInfo(detection.filePath).fileName()));
+        QWidget *btnContainer = new QWidget(latestDetectionsTable);
+        QHBoxLayout *btnLayout = new QHBoxLayout(btnContainer);
+        btnLayout->setContentsMargins(0, 0, 4, 0);
+        btnLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        QPushButton *btn = new QPushButton("Open", btnContainer);
+        btn->setProperty("detIndex", i);
+        btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        btnLayout->addWidget(btn);
+        btnContainer->setLayout(btnLayout);
+        connect(btn, &QPushButton::clicked, this, &SeizureAnalyzer::onOpenDetectionClicked);
+        latestDetectionsTable->setCellWidget(i, 5, btnContainer);
     }
+
 }
 
 void SeizureAnalyzer::updateDailyCounts()
 {
-    // Count seizures per day for selected channel
     dailyCounts.clear();
-    for (const SeizureDetection &detection : allDetections) {
-        if (detection.channelIndex == selectedChannel) {
-            QDate date = detection.timestamp.date();
+    for (const SeizureRange &detection : allDetections) {
+        if (!channelSelected(detection.channelIndex)) continue;
+        QDate date = detection.start.date();
             dailyCounts[date]++;
-        }
     }
     
-    // Update table
     dailyCountsTable->setRowCount(dailyCounts.size());
     
     QList<QDate> dates = dailyCounts.keys();
@@ -345,69 +352,375 @@ void SeizureAnalyzer::updateDailyCounts()
         dailyCountsTable->setItem(i, 0, new QTableWidgetItem(date.toString("yyyy-MM-dd")));
         dailyCountsTable->setItem(i, 1, new QTableWidgetItem(QString::number(count)));
     }
+
+    // Restore selection if date still exists
+    if (selectedDate.isValid()) {
+        for (int i = 0; i < dates.size(); ++i) {
+            if (dates[i] == selectedDate) {
+                dailyCountsTable->selectRow(i);
+                return;
+            }
+        }
+        selectedDate = QDate(); // clear if not found
+    }
 }
 
-void SeizureAnalyzer::onChannelChanged(int channel)
+void SeizureAnalyzer::onChannelItemChanged(QListWidgetItem *item)
 {
-    selectedChannel = channel;
-    
-    // Update channel info label
-    QString channelInfo = QString("Wire Channel A-%1 - Neural data from electrode").arg(channel, 3, 10, QChar('0'));
-    channelInfoLabel->setText(channelInfo);
-    
-    // Update display to show data for selected channel
+    if (!item) return;
+    int row = channelList->row(item);
+    if (row < 0 || row >= 32) return;
+
+    if (item->checkState() == Qt::Checked) {
+        selectedChannels.insert(row);
+    } else {
+        selectedChannels.remove(row);
+    }
+
     updateDisplay();
+}
+
+void SeizureAnalyzer::onDailySelectionChanged()
+{
+    auto sel = dailyCountsTable->selectionModel()->selectedRows();
+    if (sel.isEmpty()) {
+        selectedDate = QDate();
+    } else {
+        QModelIndex idx = sel.first();
+        QString dateStr = dailyCountsTable->item(idx.row(), 0)->text();
+        selectedDate = QDate::fromString(dateStr, "yyyy-MM-dd");
+    }
+    updateLatestDetections();
+}
+
+void SeizureAnalyzer::onDetectionSelectionChanged()
+{
+    // No-op (waveform view removed)
+}
+
+void SeizureAnalyzer::onOpenDetectionClicked()
+{
+    QObject *senderObj = sender();
+    if (!senderObj) return;
+    bool ok = false;
+    int idx = senderObj->property("detIndex").toInt(&ok);
+    if (!ok || idx < 0 || idx >= visibleDetections.size()) return;
+
+    const SeizureRange &det = visibleDetections[idx];
+    openRawForDetection(det);
 }
 
 void SeizureAnalyzer::updateChannelData()
 {
-    channelDataTable->setRowCount(0);
-    
-    if (allDetections.isEmpty()) {
+    // No-op (waveform view removed)
+}
+
+void SeizureAnalyzer::parseDetectionBin(const QString &filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open detection bin:" << filePath;
         return;
     }
     
-    // Get the most recent HDF5 file to read channel data from
-    QString latestFile;
-    QDateTime latestTime;
-    
-    for (const SeizureDetection &detection : allDetections) {
-        if (detection.timestamp > latestTime) {
-            latestTime = detection.timestamp;
-            latestFile = detection.filePath;
+    QFileInfo fi(filePath);
+    QDateTime fileBase = fi.lastModified();
+    QDate dirDate = QDate::fromString(fi.dir().dirName(), "yyyy-MM-dd");
+    if (dirDate.isValid()) {
+        // midnight UTC for that date without deprecated ctor
+        fileBase = QDateTime(dirDate, QTime(0,0), QTimeZone::UTC);
+    }
+    QDataStream in(&file);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    QMap<int, QDateTime> openStarts; // channel -> start time
+
+    while (!in.atEnd()) {
+        quint32 word;
+        in >> word;
+        quint8 type = word & 0x3;
+        quint8 ch = (word >> 2) & 0x1F;
+        quint32 tsTicks = (word >> 7) & 0x1FFFFFF; // 25 bits
+
+        if (ch == 0 || ch > 32) continue;
+        QDateTime ts = fileBase.addMSecs(static_cast<qint64>(tsTicks));
+        int channelIndex = ch - 1;
+
+        if (type == 0b10) { // start
+            openStarts[channelIndex] = ts;
+        } else if (type == 0b01) { // end
+            if (openStarts.contains(channelIndex)) {
+                SeizureRange range;
+                range.start = openStarts[channelIndex];
+                range.end = ts;
+                range.channelIndex = channelIndex;
+                range.filePath = filePath;
+                range.durationSec = std::max(0.0, range.start.msecsTo(range.end) / 1000.0);
+                allDetections.append(range);
+                openStarts.remove(channelIndex);
+            }
         }
     }
-    
-    if (latestFile.isEmpty()) {
+}
+
+bool SeizureAnalyzer::channelSelected(int channelIndex) const
+{
+    if (selectedChannels.isEmpty()) return false; // show nothing when none selected
+    return selectedChannels.contains(channelIndex);
+}
+
+// --- Waveform dialog and raw loader ---
+
+class WaveformCanvas : public QWidget {
+public:
+    WaveformCanvas(const QVector<float>& data,
+                   int windowMs,
+                   qint64 windowStartTickMs,
+                   int seizureStartIndex,
+                   int seizureEndIndex,
+                   QWidget* parent = nullptr)
+        : QWidget(parent)
+        , data_(data)
+        , windowMs_(windowMs)
+        , windowStartTickMs_(windowStartTickMs)
+        , szStart_(seizureStartIndex)
+        , szEnd_(seizureEndIndex) {}
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.fillRect(rect(), Qt::white);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        if (data_.isEmpty()) return;
+
+        const int w = width();
+        const int h = height();
+        const int n = data_.size();
+
+        const int leftMargin = 40;
+        const int rightMargin = 10;
+        const int topMargin = 10;
+        const int bottomMargin = 30;
+
+        QRect plotRect(leftMargin, topMargin,
+                       w - leftMargin - rightMargin,
+                       h - topMargin - bottomMargin);
+
+        // Axes
+        p.setPen(Qt::black);
+        p.drawLine(plotRect.left(), plotRect.bottom(),
+                   plotRect.right(), plotRect.bottom()); // x-axis
+        p.drawLine(plotRect.left(), plotRect.top(),
+                   plotRect.left(), plotRect.bottom());  // y-axis
+
+        // Value range
+        float minv = data_.first();
+        float maxv = data_.first();
+        for (float v : data_) { minv = std::min(minv, v); maxv = std::max(maxv, v); }
+        if (maxv - minv < 1e-3f) { maxv = minv + 1.0f; }
+
+        auto yscale = [&](float v) {
+            return plotRect.bottom() - ((v - minv) / (maxv - minv)) * plotRect.height();
+        };
+
+        // Shaded seizure region
+        if (szStart_ >= 0 && szEnd_ > szStart_ && szEnd_ < n) {
+            float x0 = plotRect.left() + (float(szStart_) / float(n - 1)) * plotRect.width();
+            float x1 = plotRect.left() + (float(szEnd_)   / float(n - 1)) * plotRect.width();
+            QRectF szRect(QPointF(x0, plotRect.top()), QPointF(x1, plotRect.bottom()));
+            QColor shade(255, 0, 0, 40);
+            p.fillRect(szRect, shade);
+        }
+
+        // Waveform
+        QPainterPath path;
+        path.moveTo(plotRect.left(), yscale(data_[0]));
+        for (int i = 1; i < n; ++i) {
+            float x = plotRect.left() + (float(i) / float(n - 1)) * plotRect.width();
+            path.lineTo(x, yscale(data_[i]));
+        }
+
+        p.setPen(QPen(Qt::blue, 1.2));
+        p.drawPath(path);
+
+        // X-axis ticks (0, mid, end)
+        p.setPen(Qt::black);
+        QFontMetrics fm(p.font());
+        int yAxis = plotRect.bottom();
+        auto drawTick = [&](double ms, int x) {
+            double absMs = windowStartTickMs_ + ms;
+            p.drawLine(x, yAxis, x, yAxis + 4);
+            QString label = QString::number(absMs / 1000.0, 'f', 3) + " s";
+            int tw = fm.horizontalAdvance(label);
+            p.drawText(x - tw / 2, yAxis + 4 + fm.ascent(), label);
+        };
+        drawTick(0.0, plotRect.left());
+        drawTick(windowMs_ / 2.0, plotRect.left() + plotRect.width() / 2);
+        drawTick(windowMs_, plotRect.right());
+
+        // Y-axis ticks (min, mid, max) in microvolts
+        auto drawYTick = [&](float v) {
+            int y = int(yscale(v));
+            p.drawLine(plotRect.left() - 4, y, plotRect.left(), y);
+            QString label = QString::number(v, 'f', 0);
+            int tw = fm.horizontalAdvance(label);
+            p.drawText(plotRect.left() - 6 - tw, y + fm.ascent() / 2, label);
+        };
+        drawYTick(minv);
+        drawYTick((minv + maxv) * 0.5f);
+        drawYTick(maxv);
+
+        // Label seizure start/end times near the top of the shaded region
+        if (szStart_ >= 0 && szEnd_ > szStart_ && szEnd_ < n) {
+            double msStart = (double(szStart_) / double(n)) * windowMs_;
+            double msEnd   = (double(szEnd_)   / double(n)) * windowMs_;
+            double absStart = windowStartTickMs_ + msStart;
+            double absEnd   = windowStartTickMs_ + msEnd;
+            QString bandLabel = QString("%1 s → %2 s")
+                                    .arg(absStart / 1000.0, 0, 'f', 3)
+                                    .arg(absEnd / 1000.0,   0, 'f', 3);
+            int tw = fm.horizontalAdvance(bandLabel);
+            p.setPen(Qt::darkRed);
+            p.drawText(plotRect.left() + (plotRect.width() - tw) / 2,
+                       plotRect.top() + fm.ascent() + 2,
+                       bandLabel);
+        }
+
+        // Border
+        p.setPen(Qt::gray);
+        p.drawRect(plotRect.adjusted(0, 0, -1, -1));
+    }
+
+private:
+    QVector<float> data_;
+    int windowMs_;
+    qint64 windowStartTickMs_;
+    int szStart_;
+    int szEnd_;
+};
+
+class WaveformDialog : public QDialog {
+public:
+    WaveformDialog(const QVector<float>& data,
+                   int windowMs,
+                   qint64 windowStartTickMs,
+                   int seizureStartIndex,
+                   int seizureEndIndex,
+                   QWidget* parent = nullptr)
+        : QDialog(parent) {
+        setModal(true);
+        resize(800, 400);
+        QVBoxLayout *layout = new QVBoxLayout(this);
+        layout->setContentsMargins(8, 8, 8, 8);
+        layout->addWidget(new WaveformCanvas(data, windowMs, windowStartTickMs,
+                                             seizureStartIndex, seizureEndIndex, this));
+    }
+};
+
+bool loadRawWindow(const QString& rawPath,
+                   int channelIndex,
+                   const QDateTime& detStart,
+                   int windowMs,
+                   QVector<float>& out,
+                   qint64& windowStartMsOut,
+                   QString& error)
+{
+    out.clear();
+    QFile f(rawPath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        error = QString("Cannot open raw file: %1").arg(rawPath);
+        return false;
+    }
+    QDataStream in(&f);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    char magic[8];
+    if (in.readRawData(magic, 8) != 8 || memcmp(magic, "HALOLOG", 7) != 0) {
+        error = "Bad magic in raw file";
+        return false;
+    }
+    quint16 version, reserved;
+    quint32 channelCount, samplesPerRecord, sampleBits, tsBits;
+    in >> version >> reserved >> channelCount >> samplesPerRecord >> sampleBits >> tsBits;
+    if (channelIndex < 0 || channelIndex >= int(channelCount)) {
+        error = "Channel out of range in raw file";
+        return false;
+    }
+
+    // Target window: always show 'windowMs' ms total, centered on detStart within the hour.
+    qint64 detMs = detStart.time().msecsSinceStartOfDay() % (3600 * 1000);
+    qint64 half = windowMs / 2;
+    qint64 startMs = std::max<qint64>(0, detMs - half);
+    qint64 endMs = startMs + windowMs;
+    windowStartMsOut = startMs;
+
+    const quint64 recordSize = 8 /*ns*/ + 4 + 4 + 512 + (channelCount * samplesPerRecord * 2);
+    int firstRec = int(startMs / samplesPerRecord);
+    int lastRec = int(endMs / samplesPerRecord) + 1;
+
+    // skip to firstRec
+    quint64 headerSize = 8 + 2 + 2 + 4 + 4 + 4 + 4;
+    quint64 offset = headerSize + quint64(firstRec) * recordSize;
+    if (!f.seek(offset)) {
+        error = "Seek failed in raw file";
+        return false;
+    }
+
+    out.reserve((lastRec - firstRec) * int(samplesPerRecord));
+    for (int rec = firstRec; rec < lastRec; ++rec) {
+        quint64 ns; quint32 seq; quint32 payload;
+        in >> ns >> seq >> payload;
+        if (in.status() != QDataStream::Ok) break;
+
+        // ts
+        QVector<quint32> ts(samplesPerRecord);
+        for (quint32 i = 0; i < samplesPerRecord; ++i) in >> ts[i];
+        if (in.status() != QDataStream::Ok) break;
+
+        // wave
+        QVector<quint16> wave(channelCount * samplesPerRecord);
+        for (quint32 i = 0; i < channelCount * samplesPerRecord; ++i) in >> wave[i];
+        if (in.status() != QDataStream::Ok) break;
+
+        for (quint32 i = 0; i < samplesPerRecord; ++i) {
+            quint32 t = ts[i];
+            if (t < startMs || t > endMs) continue;
+            // Convert 16-bit Intan code to microvolts
+            int code = int(wave[channelIndex * samplesPerRecord + i]);
+            float uv = float(code - 32768) * 0.195f;
+            out.append(uv);
+        }
+    }
+
+    if (out.isEmpty()) {
+        error = "No samples found in window";
+        return false;
+    }
+    return true;
+}
+
+void SeizureAnalyzer::openRawForDetection(const SeizureRange& detection)
+{
+    // For now, just open the raw log file with the default system handler (e.g., Intan viewer).
+    QString dateStr = detection.start.date().toString("yyyy-MM-dd");
+    QString hourStr = detection.start.time().toString("HH");
+    QDir dayDir(QDir(logsDirectory).absoluteFilePath(dateStr));
+    QString rawPath = dayDir.absoluteFilePath(QString("hour_%1_raw.log").arg(hourStr));
+
+    if (!QFile::exists(rawPath)) {
+        QMessageBox::warning(this, "Raw file missing", QString("Raw log not found:\n%1").arg(rawPath));
         return;
     }
     
-    // Read channel data from the latest file
-    Hdf5Reader reader;
-    if (!reader.open(latestFile.toStdString())) {
-        return;
-    }
-    
-    std::vector<float> channelData = reader.readChannelData(selectedChannel);
-    reader.close();
-    
-    if (channelData.empty()) {
-        return;
-    }
-    
-    // Show the last 50 data points
-    int numPoints = qMin(50, static_cast<int>(channelData.size()));
-    channelDataTable->setRowCount(numPoints);
-    
-    for (int i = 0; i < numPoints; ++i) {
-        int dataIndex = channelData.size() - numPoints + i;
-        float value = channelData[dataIndex];
-        
-        // Generate timestamp (approximate based on data index)
-        QDateTime timestamp = latestTime.addSecs(dataIndex);
-        
-        channelDataTable->setItem(i, 0, new QTableWidgetItem(timestamp.toString("hh:mm:ss")));
-        channelDataTable->setItem(i, 1, new QTableWidgetItem(QString::number(value, 'f', 3)));
-        channelDataTable->setItem(i, 2, new QTableWidgetItem(QFileInfo(latestFile).fileName()));
-    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(rawPath));
+}
+
+void SeizureAnalyzer::showChannelPopup()
+{
+    if (!channelPopup) return;
+    QPoint globalPos = channelButton->mapToGlobal(QPoint(0, channelButton->height()));
+    channelPopup->move(globalPos);
+    channelPopup->show();
+    channelPopup->raise();
 }

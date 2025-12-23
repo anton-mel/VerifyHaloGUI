@@ -13,23 +13,22 @@
 #include <QMap>
 #include <QDate>
 #include <QFileSystemWatcher>
-#include <QComboBox>
-#include "../core/hdf5_reader.h"
+#include <QPushButton>
+#include <QListWidget>
+#include <QSet>
+#include <QWidget>
 
 QT_BEGIN_NAMESPACE
 class QAction;
 class QMenu;
 QT_END_NAMESPACE
 
-struct SeizureDetection {
-    QDateTime timestamp;
-    QString type;
-    double confidence;
-    double activityLevel;
-    int rawData;
+struct SeizureRange {
+    QDateTime start;
+    QDateTime end;
+    int channelIndex; // 0-31
     QString filePath;
-    int channelIndex; 
-    // Channel where detection occurred (0-31)
+    double durationSec;
 };
 
 class SeizureAnalyzer : public QMainWindow
@@ -40,16 +39,24 @@ public:
     SeizureAnalyzer(QWidget *parent = nullptr);
     ~SeizureAnalyzer();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private slots:
     void reloadData();
     void updateDisplay();
     void onFileChanged(const QString &path);
-    void onChannelChanged(int channel);
+    void onChannelItemChanged(QListWidgetItem *item);
+    void showChannelPopup();
+    void onDailySelectionChanged();
+    void onDetectionSelectionChanged();
+    void onOpenDetectionClicked();
 
 private:
     void setupUI();
     void scanLogFiles();
     void parseHdf5File(const QString &filePath);
+    void parseDetectionBin(const QString &filePath);
     void updateSeizureCounts();
     void updateLatestDetections();
     void updateDailyCounts();
@@ -63,28 +70,37 @@ private:
     QGridLayout *dailyLayout;
     
     // Channel selection
-    QComboBox *channelSelector;
-    QLabel *channelInfoLabel;
+    QPushButton *channelButton;
+    QListWidget *channelList;
+    QWidget *channelPopup;
     
     QPushButton *reloadButton;
     QLabel *totalSeizuresLabel;
     QLabel *todaySeizuresLabel;
     QLabel *monthlySeizuresLabel;
     QLabel *lastUpdateLabel;
+    QLabel *thresholdLabel;
+    QLabel *windowTimeoutLabel;
+    QLabel *transitionCountLabel;
+    QLabel *channelsPerPacketLabel;
     
     QTableWidget *latestDetectionsTable;
     QTableWidget *dailyCountsTable;
-    QTableWidget *channelDataTable;
     
     // Data
-    QList<SeizureDetection> allDetections;
+    QList<SeizureRange> allDetections;
     QMap<QDate, int> dailyCounts;
     QMap<QString, int> monthlyCounts;
     QFileSystemWatcher *fileWatcher;
     QTimer *updateTimer;
     
     QString logsDirectory;
-    int selectedChannel;
+    QSet<int> selectedChannels; // 0-based channel indices
+    QDate selectedDate;
+    QList<SeizureRange> visibleDetections;
+    
+    bool channelSelected(int channelIndex) const;
+    void openRawForDetection(const SeizureRange& detection);
 };
 
 #endif // SEIZURE_ANALYZER_H
