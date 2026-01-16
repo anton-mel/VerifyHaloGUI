@@ -4,6 +4,8 @@
 *Email: <anton.melnychuk@yale.edu>*  
 *Date: Sep 19th, 2025*
 
+<img width="4362" height="1759" alt="datapath" src="https://github.com/user-attachments/assets/d6e35dbd-5e38-4a69-a411-066c32a1490d" />
+
 ## Table of Contents
 
 This project can be split into the following sections:
